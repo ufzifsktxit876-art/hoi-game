@@ -1,0 +1,50 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Unzip game package into www/
+        run: |
+          mkdir -p www
+          unzip -o game_offline_package-1.zip -d tmp_extract
+          cp -r tmp_extract/package/* www/
+          mv www/game_offline_edited.html www/index.html
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install deps
+        run: npm install
+
+      - name: Add Android platform
+        run: npx cap add android
+
+      - name: Sync
+        run: npx cap sync android
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Build debug APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: hoi-game-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
